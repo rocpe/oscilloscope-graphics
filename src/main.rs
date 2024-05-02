@@ -10,6 +10,8 @@
 #![no_std]
 #![no_main]
 
+use core::f64::consts::PI;
+
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -18,7 +20,7 @@ use panic_halt as _;
 use rp2040_hal as hal;
 
 // Some traits we need
-use embedded_hal::pwm::SetDutyCycle;
+use embedded_hal::{digital::StatefulOutputPin, pwm::SetDutyCycle};
 use rp2040_hal::clocks::Clock;
 
 // A shorter alias for the Peripheral Access Crate, which provides low-level
@@ -37,7 +39,7 @@ pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_GENERIC_03H;
 const LOW: u16 = 0;
 
 /// The maximum PWM value (i.e. LED brightness) we want
-const HIGH: u16 = 25000;
+const HIGH: u16 = 20000;
 
 /// External high-speed crystal on the Raspberry Pi Pico board is 12 MHz. Adjust
 /// if your board has a different frequency
@@ -91,31 +93,48 @@ fn main() -> ! {
     // Init PWMs
     let mut pwm_slices = hal::pwm::Slices::new(pac.PWM, &mut pac.RESETS);
 
-    // Configure PWM4
+    // Configure PWM1
     let pwm = &mut pwm_slices.pwm1;
     pwm.set_ph_correct();
+    pwm.set_top(HIGH);
     pwm.enable();
 
     // Output channel A on PWM1 to GPIO 2
-    let channel = &mut pwm.channel_a;
-    channel.output_to(pins.gpio2);
+    let channel_x = &mut pwm.channel_a;
+    channel_x.output_to(pins.gpio2);
 
-    // Infinite loop, fading LED up and down
+    // Output channel B on PWM1 to GPIO 3
+    let channel_y = &mut pwm.channel_b;
+    channel_y.output_to(pins.gpio3);
+
+    channel_x.set_duty_cycle(LOW).unwrap();
+    channel_y.set_duty_cycle(LOW).unwrap();
+
+    let range = (LOW..HIGH).filter(|x| x % 6 == 0);
+
+    let time = 1;
+
     loop {
-        // Ramp brightness up
-        for i in LOW..=HIGH {
-            delay.delay_us(8);
-            let _ = channel.set_duty_cycle(i);
+        for i in range.clone() {
+            let _ = channel_x.set_duty_cycle(i);
+            delay.delay_us(time);
         }
-
-        // Ramp brightness down
-        for i in (LOW..=HIGH).rev() {
-            delay.delay_us(8);
-            let _ = channel.set_duty_cycle(i);
+        for i in range.clone() {
+            let _ = channel_y.set_duty_cycle(i);
+            delay.delay_us(time);
         }
-
-        delay.delay_ms(500);
+        for i in range.clone().rev() {
+            let _ = channel_x.set_duty_cycle(i);
+            delay.delay_us(time);
+        }
+        for i in range.clone().rev() {
+            let _ = channel_y.set_duty_cycle(i);
+            delay.delay_us(time);
+        }
     }
 }
 
-// End of file
+fn sin_to_pos(y: f64) -> u16 {
+    let normalised = (y + 1.0) * 0.5;
+    (LOW + ((HIGH - LOW) as f64 * normalised) as u16).max(LOW).min(HIGH)
+}
