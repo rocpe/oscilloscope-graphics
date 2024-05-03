@@ -10,8 +10,7 @@
 #![no_std]
 #![no_main]
 
-use core::f64::consts::PI;
-
+use display::Display;
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -20,12 +19,14 @@ use panic_halt as _;
 use rp2040_hal as hal;
 
 // Some traits we need
-use embedded_hal::{digital::StatefulOutputPin, pwm::SetDutyCycle};
+use embedded_hal::pwm::SetDutyCycle;
 use rp2040_hal::clocks::Clock;
 
 // A shorter alias for the Peripheral Access Crate, which provides low-level
 // register access
 use hal::pac;
+
+mod display;
 
 /// The linker will place this boot block at the start of our program image. We
 /// need this to help the ROM bootloader get our code up and running.
@@ -114,27 +115,59 @@ fn main() -> ! {
 
     let time = 1;
 
-    loop {
-        for i in range.clone() {
-            let _ = channel_x.set_duty_cycle(i);
-            delay.delay_us(time);
-        }
-        for i in range.clone() {
-            let _ = channel_y.set_duty_cycle(i);
-            delay.delay_us(time);
-        }
-        for i in range.clone().rev() {
-            let _ = channel_x.set_duty_cycle(i);
-            delay.delay_us(time);
-        }
-        for i in range.clone().rev() {
-            let _ = channel_y.set_duty_cycle(i);
-            delay.delay_us(time);
-        }
-    }
-}
+    channel_y.set_duty_cycle(10000).unwrap();
 
-fn sin_to_pos(y: f64) -> u16 {
-    let normalised = (y + 1.0) * 0.5;
-    (LOW + ((HIGH - LOW) as f64 * normalised) as u16).max(LOW).min(HIGH)
+    let mut display = Display::new(
+        channel_x,
+        channel_y,
+        -4.,
+        4.,
+        -3.,
+        3.,
+    );
+
+    loop {
+        // for i in range.clone() {
+        //     let _ = channel_x.set_duty_cycle(i);
+        //     delay.delay_us(time);
+        // }
+        // for i in range.clone() {
+        //     let _ = channel_y.set_duty_cycle(i);
+        //     delay.delay_us(time);
+        // }
+        // for i in range.clone().rev() {
+        //     let _ = channel_x.set_duty_cycle(i);
+        //     delay.delay_us(time);
+        // }
+        // for i in range.clone().rev() {
+        //     let _ = channel_y.set_duty_cycle(i);
+        //     delay.delay_us(time);
+        // }
+
+        
+        // channel_y.set_duty_cycle(0).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(5000).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(10000).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(15000).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(20000).unwrap();
+        // delay.delay_ms(1000);
+
+        // for i in 0..=100 {
+        //     display.set_position(-1., 1.).unwrap();
+        // }
+
+
+        display.set_position(-1., 1.).unwrap();
+        delay.delay_ms(100);
+        display.set_position(1., 1.).unwrap();
+        delay.delay_ms(100);
+        display.set_position(1., -1.).unwrap();
+        delay.delay_ms(100);
+        display.set_position(-1., -1.).unwrap();
+        delay.delay_ms(100);
+    }
 }
