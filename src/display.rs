@@ -5,7 +5,7 @@ use rp2040_hal as hal;
 
 use embedded_hal::pwm::SetDutyCycle;
 
-use crate::HIGH;
+use crate::TOP;
 
 pub struct Display<'a, S>
 where
@@ -45,14 +45,14 @@ where
         let trimmed = x.max(self.x_min).min(self.x_max);
         let shifted = trimmed - self.x_min;
         let normalized = shifted / (self.x_max - self.x_min);
-        (normalized * HIGH as f32) as u16
+        (normalized * TOP as f32) as u16
     }
 
     fn coord_to_y_duty_cycle(&self, y: f32) -> u16 {
         let trimmed = y.max(self.y_min).min(self.y_max);
         let shifted = trimmed - self.y_min;
         let normalized = shifted / (self.y_max - self.y_min);
-        (normalized * HIGH as f32) as u16
+        (normalized * TOP as f32) as u16
     }
 
     pub fn set_position(&mut self, x: f32, y: f32) -> Result<(), Infallible> {

@@ -26,6 +26,8 @@ use rp2040_hal::clocks::Clock;
 // register access
 use hal::pac;
 
+use libm::{cosf, sincosf, sinf};
+
 mod display;
 
 /// The linker will place this boot block at the start of our program image. We
@@ -36,11 +38,8 @@ mod display;
 #[used]
 pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_GENERIC_03H;
 
-/// The minimum PWM value (i.e. LED brightness) we want
-const LOW: u16 = 0;
-
-/// The maximum PWM value (i.e. LED brightness) we want
-const HIGH: u16 = 20000;
+/// The PWM TOP value
+const TOP: u16 = 1024;
 
 /// External high-speed crystal on the Raspberry Pi Pico board is 12 MHz. Adjust
 /// if your board has a different frequency
@@ -55,16 +54,11 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 /// infinite loop.
 #[rp2040_hal::entry]
 fn main() -> ! {
-    // Grab our singleton objects
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
-
-    // Set up the watchdog driver - needed by the clock setup code
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
 
-    // Configure the clocks
-    //
-    // The default is to generate a 125 MHz system clock
+    // Should by default be a 125 MHz system clock? - measurements suggest it is equal to ~65 MHz
     let clocks = hal::clocks::init_clocks_and_plls(
         XTAL_FREQ_HZ,
         pac.XOSC,
@@ -97,7 +91,7 @@ fn main() -> ! {
     // Configure PWM1
     let pwm = &mut pwm_slices.pwm1;
     pwm.set_ph_correct();
-    pwm.set_top(HIGH);
+    pwm.set_top(TOP);
     pwm.enable();
 
     // Output channel A on PWM1 to GPIO 2
@@ -108,24 +102,9 @@ fn main() -> ! {
     let channel_y = &mut pwm.channel_b;
     channel_y.output_to(pins.gpio3);
 
-    channel_x.set_duty_cycle(LOW).unwrap();
-    channel_y.set_duty_cycle(LOW).unwrap();
+    let mut display = Display::new(channel_x, channel_y, -4., 4., -3., 3.);
 
-    let range = (LOW..HIGH).filter(|x| x % 6 == 0);
-
-    let time = 1;
-
-    channel_y.set_duty_cycle(10000).unwrap();
-
-    let mut display = Display::new(
-        channel_x,
-        channel_y,
-        -4.,
-        4.,
-        -3.,
-        3.,
-    );
-
+    let mut t = 0.0;
     loop {
         // for i in range.clone() {
         //     let _ = channel_x.set_duty_cycle(i);
@@ -144,7 +123,6 @@ fn main() -> ! {
         //     delay.delay_us(time);
         // }
 
-        
         // channel_y.set_duty_cycle(0).unwrap();
         // delay.delay_ms(1000);
         // channel_y.set_duty_cycle(5000).unwrap();
@@ -160,14 +138,57 @@ fn main() -> ! {
         //     display.set_position(-1., 1.).unwrap();
         // }
 
+        // channel_y.set_duty_cycle(0).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(256).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(512).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(512+256).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(1024).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(512+256).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(256).unwrap();
+        // delay.delay_ms(1000);
+        // channel_y.set_duty_cycle(0).unwrap();
+        // delay.delay_ms(1000);
 
-        display.set_position(-1., 1.).unwrap();
-        delay.delay_ms(100);
-        display.set_position(1., 1.).unwrap();
-        delay.delay_ms(100);
-        display.set_position(1., -1.).unwrap();
-        delay.delay_ms(100);
-        display.set_position(-1., -1.).unwrap();
-        delay.delay_ms(100);
+        // channel_x.set_duty_cycle(512).unwrap();
+        // channel_y.set_duty_cycle(512).unwrap();
+        // display.set_position(-1., -1.).unwrap();
+        // delay.delay_ms(1);
+        // display.set_position(-1., 1.).unwrap();
+        // delay.delay_ms(1);
+        // display.set_position(1., 1.).unwrap();
+        // delay.delay_ms(1);
+        // display.set_position(1., -1.).unwrap();
+        // delay.delay_ms(1);
+
+        // for y in -3..=3 {
+        //     for x in -4..=4 {
+        //         display.set_position(x as f32, y as f32).unwrap();
+        //         delay.delay_ms(50);
+        //     }
+        // }
+
+        // display.set_position(-1., 1.).unwrap();
+        // delay.delay_ms(200);
+        // display.set_position(1., 1.).unwrap();
+        // delay.delay_ms(200);
+        // display.set_position(1., -1.).unwrap();
+        // delay.delay_ms(200);
+        // display.set_position(-1., -1.).unwrap();
+        // delay.delay_ms(200);
+
+        let sin = sinf(t);
+        let (x, y) = (
+            2. * sin * sin * sin,
+            (13. * cosf(t) - 5. * cosf(2. * t) - 2. * cosf(3. * t)) * 0.125,
+        );
+        display.set_position(x, y).unwrap();
+        delay.delay_us(1);
+        t += 0.1;
     }
 }
