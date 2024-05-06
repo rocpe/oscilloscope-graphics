@@ -8,7 +8,7 @@ use rp2040_hal as hal;
 use rp2040_hal::clocks::Clock;
 use hal::pac;
 
-use libm::{cosf, sinf};
+use libm::{cosf, sinf, expf, powf, sqrtf};
 
 use display::Display;
 
@@ -68,15 +68,15 @@ fn main() -> ! {
     // Init display
     let mut display = Display::new(channel_x, channel_y, -4., 4., -3., 3.);
 
-    let mut t = 0.0;
+    let mut t = -3.0;
     loop {
-        let sin = sinf(t);
         let (x, y) = (
-            2. * sin * sin * sin,
-            (13. * cosf(t) - 5. * cosf(2. * t) - 2. * cosf(3. * t)) * 0.125,
+            t,
+            (6.0/5.0) * (sqrtf(powf(sinf(t), 2.0)) + 5.0*expf(-powf(t, 100.0))*cosf(t)) - 3.0,
         );
         display.set_position(x, y).unwrap();
         delay.delay_us(1);
         t += 0.1;
+        if t > 3.0 { t = -3.0; }
     }
 }
